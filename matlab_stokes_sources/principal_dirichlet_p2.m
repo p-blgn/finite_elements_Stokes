@@ -1,0 +1,92 @@
+% =====================================================
+%
+% une routine pour la mise en oeuvre des EF P2 Lagrange
+% pour l'equation de Laplace suivante, avec conditions de Neumann
+%
+% | -\Delta u + u= f,   dans \Omega
+% |         du/dn = 0,   sur le bord
+%
+% =====================================================
+
+% lecture du maillage et affichage
+% ---------------------------------
+nom_maillage = "geomCarre.msh";
+[Nbpt,Nbtri,Coorneu,Refneu,Numtri,Reftri]= lecture_msh_ordre2(nom_maillage);
+
+% ----------------------
+% calcul des matrices EF
+% ----------------------
+
+% declarations
+% ------------
+KK = sparse(Nbpt,Nbpt); % matrice de rigidite
+MM = sparse(Nbpt,Nbpt); % matrice de masse
+LL = zeros(Nbpt,1);     % vecteur second membre
+
+% boucle sur les triangles
+% ------------------------
+for l=1:Nbtri
+
+  % Coordonnees des sommets du triangles
+  % A COMPLETER
+  S1=Coorneu(Numtri(l,1),:);
+  S2=Coorneu(Numtri(l,2),:);
+  S3=Coorneu(Numtri(l,3),:);
+
+  % Calcul des matrices elementaires du triangle l
+  Kel=matK_elem_p2(S1, S2, S3);
+  Mel=matM_elem_p2(S1, S2, S3);
+
+  % On fait l'assemblage des matrices globales
+  % A COMPLETER
+  for i=1:6
+      I = Numtri(l,i);
+      for j=1:6
+          J = Numtri(l,j);
+          MM(I,J) = MM(I,J) + Mel(i,j);
+          KK(I,J) = KK(I,J) + Kel(i,j);
+      end
+  end
+
+end % for l
+
+% Calcul du second membre
+% -------------------------
+% A COMPLETER
+% utiliser la routine f.m
+FF = zeros(Nbpt,1);
+for i=1:Nbpt
+    FF(i) = f2(Coorneu(i,1),Coorneu(i,2));
+end
+LL = MM*FF;
+AA=MM+KK;
+[tilde_AA tilde_LL]=elimine(AA, LL, Refneu); %pseudo-élimination
+% Resolution du systeme lineaire
+% ----------
+UU = (tilde_AA)\tilde_LL;
+
+% visualisation
+% -------------
+affiche_ordre2(UU, Numtri, Coorneu,sprintf('Neumann - %s', nom_maillage));
+
+validation = 'non';
+% validation
+% ----------
+if strcmp(validation,'oui')
+UU_exact = cos(pi*Coorneu(:,1)).*cos(2*pi*Coorneu(:,2));
+% Calcul de l'erreur L2
+err = 0;
+n_u = 0;
+L2_delta = sqrt(dot(MM*(UU_exact-UU), UU_exact-UU));
+L2_U = sqrt(dot(MM*(UU_exact), UU_exact));;
+err_L2 = L2_delta/L2_U;
+% Calcul de l'erreur H1
+H1_delta = sqrt(dot(KK*(UU_exact-UU), UU_exact-UU));
+H1_U = sqrt(dot(KK*(UU_exact), UU_exact));
+err_H1 = H1_delta/H1_U;
+% attention de bien changer le terme source (dans FF)
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                        fin de la routine
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%2022
